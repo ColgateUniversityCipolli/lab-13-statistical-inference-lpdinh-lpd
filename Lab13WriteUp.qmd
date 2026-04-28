@@ -122,12 +122,6 @@ Using the `pwr` package for \texttt{R} [@pwr], conduct a power analysis. How man
 The researchers need at least 21 observations.
 
 ```{r}
-#| echo: false
-install.packages("pwr")
-install.packages("effectsize")
-```
-
-```{r}
 library(pwr)
 pwr.t.test(d = 0.65,
           power = 0.80, alternative = "two.sided", type = "one.sample")
@@ -281,30 +275,42 @@ Conduct the inferences they do in the paper. Make sure to report the results a l
 
 **Solution**
 
-* The close responses differed significantly from 0 (($t=9.16$, $p<0.0001$; $g=1.34$; 95% CI: 4.43, 4.60))
+* The close responses differed significantly from 0 ($t=9.16$, $p<0.0001$; $g=1.77$; 95% CI: 0.14, 0.22).
 
 ```{r}
 t.test(x=dat.birds$closer_vals,
       mu=0, alternative="greater")
+# can't obtain CI from 1-sided test
+
+t.test(x=dat.birds$closer_vals,
+      mu=0, alternative="two.sided")
 
 library(effectsize)
 hedges_g(x=dat.birds$closer_vals, mu = 0)
 ```
 
-* The far responses differed significantly from 0.
+* The far responses differed significantly from 0 ($t=-7.92$, $p<0.0001$; $g=-1.53$; 95% CI: -0.27, -0.16).
 
 ```{r}
 t.test(x=dat.birds$further_vals,
       mu=0, alternative="less")
+
+t.test(x=dat.birds$further_vals,
+      mu=0, alternative="two.sided")
+
+library(effectsize)
+hedges_g(x=dat.birds$further_vals, mu = 0)
 ```
 
-* The difference between populations was significant.
+* The difference between populations was statistically significant ($t=9.14$, $p<0.0001$; $g=1.77$; 95% CI: 0.30, 0.48).
 
 ```{r}
 t.test(x=dat.birds$difference,
       mu=0, alternative="two.sided")
-```
 
+library(effectsize)
+hedges_g(x=dat.birds$difference, mu = 0)
+```
 
 ## Part e 
 
@@ -314,4 +320,39 @@ to highlight the rejection region and the $p$-value. Additionally, add the
 resampling distribution for $T$ to the chart to demonstrate any differences 
 between the null distribution and the distribution suggested by the data.
 
+* Close responses is larger than 0.
+
+```{r}
+#| label: fig-ttest1
+#| echo: false
+#| fig-cap: "Distribution of t-statistic under $H_0$ and $H_a$"
+#| fig-width: 8
+#| fig-height: 5
+#| scale: "80%"
+#| fig-align: "center"
+#| size: scriptsize
+
+ggplot(ggdat) +
+    geom_line(aes(x=t, y=pdf.h0))+ 
+    geom_hline(yintercept=0)+
+    geom_ribbon(data=ggdat |> 
+        filter(t >= -t.critical & t <= t.critical),
+        aes(x=t, ymin=0, ymax=pdf.h0, 
+        fill="1-alpha"), alpha=0.3) +
+    geom_ribbon(data=ggdat |> filter(t >= t.critical),
+                aes(x=t, ymin=0, ymax= pdf.h0, fill="rejection"), alpha=0.3) +
+    geom_ribbon(data=ggdat |> filter(t <= -t.critical),
+                aes(x=t, ymin=0, ymax= pdf.h0, fill="rejection"), alpha=0.3) +
+    geom_point(data=tibble(x=t.stat, y=0),
+                aes(x=x, y=y), color="red", size=3)+
+    scale_x_continuous("t", breaks=t.breaks,
+                        sec.axis = sec_axis(~., bquote (bar(x)),breaks=t.breaks, 
+                        labels=xbar.breaks))+
+    scale_fill_manual(
+        values = c("rejection" = "red", "1-alpha" = "steelblue"),
+        labels = c("rejection" = expression(alpha/2), 
+                    "1-alpha" = expression(1 - alpha))
+    )+
+    labs(y = "Density", fill="")
+```
 

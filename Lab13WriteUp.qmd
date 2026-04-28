@@ -151,7 +151,11 @@ Summarize the data.
 
 **Solution**
 
-* Summary
+Our data summary suggests that dopamine in the brains of young zebra finches decreases when they sing further away ($M=-0.21$) and increases when they sing closer to their adult song ($M=0.18$). There seems to be a difference between dopamine in the brains of young zebra finches when they sing further away compared to closer to their adult song ($M=0.18$).
+
+Notably, the disribution for the closer data appears to be right-skewed, suggesting that there are more higher values than lower values.
+
+* Numerical summary
 
 ```{r}
 closer_summary = dat.birds |>
@@ -206,6 +210,65 @@ summary = tibble(
 #| echo: false
 
 summary |> knitr::kable(digits = 2)
+```
+
+* Data visualization
+
+```{r}
+#| size: scriptsize
+#| label: fig-closer
+#| fig-cap: "Average % change in fluorescence for closer renditions"
+#| fig-width: 5
+#| fig-height: 3
+#| scale: "80%"
+#| fig-align: "center"
+
+ggplot(dat.birds) +
+  geom_boxplot (aes (x = "",
+                    y = closer_vals),
+                width = 0.1)+
+  theme_bw() +
+  labs(x="'",
+      y = expression(Delta * F/F)) +
+  theme(axis.ticks.x = element_blank())
+```
+
+```{r}
+#| size: scriptsize
+#| label: fig-further
+#| fig-cap: "Average % change in fluorescence for further renditions"
+#| fig-width: 5
+#| fig-height: 3
+#| scale: "80%"
+#| fig-align: "center"
+
+ggplot(dat.birds) +
+  geom_boxplot (aes (x = "",
+                    y = further_vals),
+                width = 0.1)+
+  theme_bw() +
+  labs(x="'",
+      y = expression(Delta * F/F)) +
+  theme(axis.ticks.x = element_blank())
+```
+
+```{r}
+#| size: scriptsize
+#| label: fig-diff
+#| fig-cap: "Difference in average % change in fluorescence between closer and further renditions"
+#| fig-width: 5
+#| fig-height: 3
+#| scale: "80%"
+#| fig-align: "center"
+
+ggplot(dat.birds) +
+  geom_boxplot (aes (x = "",
+                    y = difference),
+                width = 0.1)+
+  theme_bw() +
+  labs(x="'",
+      y = expression(Delta * F/F)) +
+  theme(axis.ticks.x = element_blank())
 ```
 
 * Recreating Figure 2g:
@@ -272,38 +335,57 @@ Conduct the inferences they do in the paper. Make sure to report the results a l
 * The close responses differed significantly from 0 ($t=9.16$, $p<0.0001$; $g=1.77$; 95% CI: 0.14, 0.22).
 
 ```{r}
-t.test(x=dat.birds$closer_vals,
+t1 = t.test(x=dat.birds$closer_vals,
       mu=0, alternative="greater")
 # can't obtain CI from 1-sided test
 
-t.test(x=dat.birds$closer_vals,
-      mu=0, alternative="two.sided")
+ci1 = t.test(x=dat.birds$closer_vals,
+      mu=0, alternative="two.sided")$conf.int
 
 library(effectsize)
-hedges_g(x=dat.birds$closer_vals, mu = 0)
+g1 = hedges_g(x=dat.birds$closer_vals, mu = 0)
+(t1)
 ```
 
 * The far responses differed significantly from 0 ($t=-7.92$, $p<0.0001$; $g=-1.53$; 95% CI: -0.27, -0.16).
 
 ```{r}
-t.test(x=dat.birds$further_vals,
+t2 = t.test(x=dat.birds$further_vals,
       mu=0, alternative="less")
 
-t.test(x=dat.birds$further_vals,
-      mu=0, alternative="two.sided")
-
-library(effectsize)
-hedges_g(x=dat.birds$further_vals, mu = 0)
+ci2 = t.test(x=dat.birds$further_vals,
+      mu=0, alternative="two.sided")$conf.int
+g2 = hedges_g(x=dat.birds$further_vals, mu = 0)
+(t2)
 ```
 
 * The difference between populations was statistically significant ($t=9.14$, $p<0.0001$; $g=1.77$; 95% CI: 0.30, 0.48).
 
 ```{r}
-t.test(x=dat.birds$difference,
+t3 = t.test(x=dat.birds$difference,
       mu=0, alternative="two.sided")
+g3 = hedges_g(x=dat.birds$difference, mu = 0)
+(t3)
+```
 
-library(effectsize)
-hedges_g(x=dat.birds$difference, mu = 0)
+```{r}
+stats = tibble(
+  Data = c("Closer Renditions", "Further Renditions", "Paired Difference"),
+  t = c(t1$statistic, t2$statistic, t3$statistic),
+  p = c(t1$p.value, t2$p.value, t3$p.value),
+  g = c(g1$Hedges_g, g2$Hedges_g, g3$Hedges_g),
+  CI_LB = c(ci1[1], ci2[1], t3$conf.int[1]),
+  CI_UB = c(ci1[2], ci2[2], t3$conf.int[2])
+)
+```
+
+```{r}
+#| label: tbl-stats
+#| tbl-cap: "Summary for average % change in fluorescence"
+#| tbl-align: "center"
+#| echo: false
+
+stats |> knitr::kable(digits = 2)
 ```
 
 ## Part e 
@@ -370,9 +452,7 @@ ggplot(ggdat) +
                         sec.axis = sec_axis(~., bquote (bar(x)),breaks=t.breaks, 
                         labels=xbar.breaks))+
   scale_fill_manual(
-    values = c("rejection range" = "red"),
-    c("Null Distribution" = "salmon", 
-       "Resampling Distribution" = "teal")
+    values = c("rejection range" = "red")
     )+
   labs(y = "Density", fill="") +
   theme(legend.title = element_blank())
@@ -426,8 +506,59 @@ ggplot(ggdat) +
     values = c("rejection range" = "red")
   )+
 # remove the "color" label
-  theme(legend.title = element_blank())
+  theme(legend.title = element_blank()) +
   labs(y = "Density", fill="")
 ```
 
+* Paired difference is significant.
 
+```{r}
+mu0 <- 0
+x.bar <- mean(dat.birds$difference)
+s <- sd(dat.birds$difference)
+t.stat <- (x.bar - mu0)/(s/sqrt(n))
+
+# resampling for h0 distribution
+ts <- rep (NA, 1000)
+for (i in 1:1000){
+  curr.sample <- sample(dat.birds$difference, size=n, replace = T)
+  ts[i] <- (mean(curr.sample) - mu0)/ (s/sqrt (n))
+}
+# resampling for h0 distribution
+ts <- rep (NA, 1000)
+for (i in 1:1000){
+  curr.sample <- sample(dat.birds$difference, size=n, replace = T)
+  ts[i] <- (mean(curr.sample) - mu0)/ (s/sqrt (n))
+}
+```
+
+```{r}
+#| label: fig-ttest3
+#| echo: false
+#| fig-cap: "Distribution of t-statistic under $H_0$ and $H_a$"
+#| fig-width: 8
+#| fig-height: 5
+#| scale: "80%"
+#| fig-align: "center"
+#| size: scriptsize
+
+ggplot(ggdat) +
+  geom_line(aes(x=t, y=pdf.h0, color="Null Distribution")) + 
+  stat_density(data=tibble(t=ts), aes(x=t, color="Resampling Distribution"), geom="line")+
+  geom_hline(yintercept=0)+
+  geom_ribbon(data=ggdat |> filter(t <= t.critical.lower),
+                aes(x=t, ymin=0, ymax= pdf.h0, fill="rejection range"), alpha=0.3) +
+  geom_ribbon(data=ggdat |> filter(t >= t.critical.upper),
+                aes(x=t, ymin=0, ymax= pdf.h0, fill="rejection range"), alpha=0.3) +
+  geom_point(data=tibble(x=t.stat, y=0),
+                aes(x=x, y=y), color="red", size=3)+
+  scale_x_continuous("t", breaks=t.breaks,
+                        sec.axis = sec_axis(~., bquote (bar(x)),breaks=t.breaks, 
+                        labels=xbar.breaks))+
+  scale_fill_manual(
+    values = c("rejection range" = "red")
+  )+
+# remove the "color" label
+  theme(legend.title = element_blank()) +
+  labs(y = "Density", fill="")
+```

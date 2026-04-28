@@ -111,11 +111,41 @@ X_{\text{far}} &= \text{average \% change in fluorescence for the bottom 10\% sy
 
 That is, the unit of measure is the syllable as measured on six birds, and the measurement is somewhat complicated.
 
+<!-- are birds happier when they sing more similarly to adult birds. "happier" is measured using change in fluorescence. "closeness" is measured using "the bottom 10% syllable renditions
+relative to distance from adult sound." "corrected for singing" is because sometimes birds are happier.-->
+
 ## Part a
 Using the `pwr` package for \texttt{R} [@pwr], conduct a power analysis. How many observations would the researchers need to detect a moderate-to-large effect ($d=0.65$) when using $\alpha=0.05$ and default power (0.80) for a two-sided one sample $t$ test.
 
+**Solution**
+
+The researchers need at least 21 observations.
+
+```{r}
+#| echo: false
+install.packages("pwr")
+install.packages("effectsize")
+```
+
+```{r}
+library(pwr)
+pwr.t.test(d = 0.65,
+          power = 0.80, alternative = "two.sided", type = "one.sample")
+```
+
 ## Part b
 Click the link to go to the paper. Find the source data for Figure 2. Download the Excel file. Describe what you needed to do to collect the data for Figure 2(g). Note that you only need the `closer_vals` and `further_vals`. Ensure to `mutate()` the data to get a difference (e.g., `closer_vals - further_vals`).
+
+**Solution**
+
+I downloaded the source data and exported it to CSV. Mac allows me to create a file for each table. I then combined the two columns of the `Closer_vals` and `Farther_vals` into 1 CSV file, named each colummn, and moved the file into Lab13 folder. I constructed a tibble using this CSV file and added a column that captures the difference.
+
+```{r}
+dat.birds = read.csv("Figure2g.csv")
+dat.birds = dat.birds |>
+  mutate(difference = closer_vals - further_vals)
+
+```
 
 ## Part c
 Summarize the data.
@@ -124,6 +154,119 @@ Summarize the data.
 * Summarize the closer data. Do the data suggest that dopamine in the brains of young zebra finches increases when they sing closer to their adult song?
 * Summarize the paired differences. Do the data suggest that there is a difference between dopamine in the brains of young zebra finches when they sing further away compared to closer to their adult song?
 * **Optional Challenge** Can you reproduce Figure 2(g)? Note that the you can use \texttt{geom\_errorbar()} to plot the range created by adding the mean $\pm$ one standard deviation.
+
+**Solution**
+
+* Closer data:
+
+```{r}
+closer_summary = dat.birds |>
+  summarize(
+    Mean = mean(closer_vals, na.rm = T),
+    SD = sd(closer_vals, na.rm = T),
+    Median = median(closer_vals, na.rm = T),
+    IQR = IQR(closer_vals, na.rm = T),
+    Skewness = e1071::skewness(closer_vals, na.rm = T),
+    "Excess Kurtosis" = e1071::kurtosis(closer_vals, na.rm = T)
+)
+```
+
+```{r}
+#| label: tbl-sumcloser
+#| tbl-cap: "Summary for average % change in fluorescence for closer renditions"
+#| tbl-align: "center"
+#| echo: false
+
+closer_summary |> knitr::kable(digits = 2)
+```
+
+* Further data:
+
+```{r}
+further_summary = dat.birds |>
+  summarize(
+    Mean = mean(further_vals, na.rm = T),
+    SD = sd(further_vals, na.rm = T),
+    Median = median(further_vals, na.rm = T),
+    IQR = IQR(further_vals, na.rm = T),
+    Skewness = e1071::skewness(further_vals, na.rm = T),
+    "Excess Kurtosis" = e1071::kurtosis(further_vals, na.rm = T)
+)
+```
+
+```{r}
+#| label: tbl-further
+#| tbl-cap: "Summary for average % change in fluorescence for closer renditions"
+#| tbl-align: "center"
+#| echo: false
+
+further_summary |> knitr::kable(digits = 2)
+```
+
+* Paird Difference
+
+```{r}
+diff_summary = dat.birds |>
+  summarize(
+    Mean = mean(difference, na.rm = T),
+    SD = sd(difference, na.rm = T),
+    Median = median(difference, na.rm = T),
+    IQR = IQR(difference, na.rm = T),
+    Skewness = e1071::skewness(difference, na.rm = T),
+    "Excess Kurtosis" = e1071::kurtosis(difference, na.rm = T)
+)
+```
+
+```{r}
+#| label: tbl-sumdiff
+#| tbl-cap: "Summary for average % change in fluorescence for closer renditions"
+#| tbl-align: "center"
+#| echo: false
+
+diff_summary |> knitr::kable(digits = 2)
+```
+
+```{r}
+# modify dataset to plot x-axis
+dat.birds.plot = dat.birds |>
+  mutate(ID = seq(1, nrow(dat.birds), 1)) |>
+  pivot_longer(cols = c(closer_vals, further_vals),
+              names_to = "distance",
+              values_to = "delta.f")
+
+error.bars = tibble(
+  distance = c("closer_vals", "further_vals"),
+  upper = c(closer_summary$Mean + closer_summary$SD, further_summary$Mean + further_summary$SD),
+  lower = c(closer_summary$Mean - closer_summary$SD, further_summary$Mean - further_summary$SD)
+)
+```
+
+```{r}
+#| size: scriptsize
+#| label: fig-2g
+#| fig-cap: "Average % change in fluorescence for closer and further renditions"
+#| fig-width: 5
+#| fig-height: 3
+#| scale: "80%"
+#| fig-align: "center"
+
+ggplot()+
+  geom_point(data = dat.birds.plot,
+            aes(x = distance,
+                y = delta.f,
+                color = distance)) +
+  geom_line(linewidth = 10) +
+  geom_errorbar(data = error.bars,
+                aes(x = distance,
+                ymin = lower, ymax = upper), width = 0.2) + 
+  theme_bw() + 
+  # rename
+  scale_x_discrete(labels = c("closer_vals" = "Closer", 
+                               "further_vals" = "Further")) +
+  labs(x = "Proximity to the median of the adult renditions of the syllable",
+      y= expression(Delta * F/F)) +
+  guides(color = "none")
+```
 
 ## Part d
 Conduct the inferences they do in the paper. Make sure to report the results a little more comprehensively -- that is your parenthetical should look something like: ($t=23.99$, $p<0.0001$; $g=1.34$; 95% CI: 4.43, 4.60). Ensure to verify any conditions for use.\
@@ -135,6 +278,33 @@ Conduct the inferences they do in the paper. Make sure to report the results a l
 **Note**: Use the appropriate one-sided test.
 * "The difference between populations was significant ($p=1.04 \times10^{-8}$).''\
 **Note**: Use the two-sided test.
+
+**Solution**
+
+* The close responses differed significantly from 0 (($t=9.16$, $p<0.0001$; $g=1.34$; 95% CI: 4.43, 4.60))
+
+```{r}
+t.test(x=dat.birds$closer_vals,
+      mu=0, alternative="greater")
+
+library(effectsize)
+hedges_g(x=dat.birds$closer_vals, mu = 0)
+```
+
+* The far responses differed significantly from 0.
+
+```{r}
+t.test(x=dat.birds$further_vals,
+      mu=0, alternative="less")
+```
+
+* The difference between populations was significant.
+
+```{r}
+t.test(x=dat.birds$difference,
+      mu=0, alternative="two.sided")
+```
+
 
 ## Part e 
 

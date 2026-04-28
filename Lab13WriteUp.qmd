@@ -425,6 +425,7 @@ ggplot(ggdat) +
   scale_fill_manual(
     values = c("rejection range" = "red")
   )+
+# remove the "color" label
   theme(legend.title = element_blank())
   labs(y = "Density", fill="")
 ```

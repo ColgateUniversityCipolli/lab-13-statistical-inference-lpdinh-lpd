@@ -151,7 +151,7 @@ Summarize the data.
 
 **Solution**
 
-* Closer data:
+* Summary
 
 ```{r}
 closer_summary = dat.birds |>
@@ -163,20 +163,7 @@ closer_summary = dat.birds |>
     Skewness = e1071::skewness(closer_vals, na.rm = T),
     "Excess Kurtosis" = e1071::kurtosis(closer_vals, na.rm = T)
 )
-```
 
-```{r}
-#| label: tbl-sumcloser
-#| tbl-cap: "Summary for average % change in fluorescence for closer renditions"
-#| tbl-align: "center"
-#| echo: false
-
-closer_summary |> knitr::kable(digits = 2)
-```
-
-* Further data:
-
-```{r}
 further_summary = dat.birds |>
   summarize(
     Mean = mean(further_vals, na.rm = T),
@@ -185,21 +172,8 @@ further_summary = dat.birds |>
     IQR = IQR(further_vals, na.rm = T),
     Skewness = e1071::skewness(further_vals, na.rm = T),
     "Excess Kurtosis" = e1071::kurtosis(further_vals, na.rm = T)
-)
-```
+) 
 
-```{r}
-#| label: tbl-further
-#| tbl-cap: "Summary for average % change in fluorescence for closer renditions"
-#| tbl-align: "center"
-#| echo: false
-
-further_summary |> knitr::kable(digits = 2)
-```
-
-* Paird Difference
-
-```{r}
 diff_summary = dat.birds |>
   summarize(
     Mean = mean(difference, na.rm = T),
@@ -209,17 +183,32 @@ diff_summary = dat.birds |>
     Skewness = e1071::skewness(difference, na.rm = T),
     "Excess Kurtosis" = e1071::kurtosis(difference, na.rm = T)
 )
+
 ```
 
 ```{r}
-#| label: tbl-sumdiff
-#| tbl-cap: "Summary for average % change in fluorescence for closer renditions"
+
+summary = tibble(
+  Data = c("Closer Renditions", "Further Renditions", "Paired Difference"),
+  Mean = c(closer_summary$Mean, further_summary$Mean, diff_summary$Mean),
+  SD = c(closer_summary$SD, further_summary$SD, diff_summary$SD),
+  Median = c(closer_summary$Median, further_summary$Median, diff_summary$Median),
+  IQR = c(closer_summary$IQR, further_summary$IQR, diff_summary$IQR),
+  Skewness = c(closer_summary$Skewness, further_summary$Skewness, diff_summary$Skewness),
+  Excess_Kurtosis = c(closer_summary$Excess_Kurtosis, further_summary$Excess_Kurtosis, diff_summary$Excess_Kurtosis)
+)
+```
+
+```{r}
+#| label: tbl-sum
+#| tbl-cap: "Summary for average % change in fluorescence"
 #| tbl-align: "center"
 #| echo: false
 
-diff_summary |> knitr::kable(digits = 2)
+summary |> knitr::kable(digits = 2)
 ```
 
+* Recreating Figure 2g:
 ```{r}
 # modify dataset to plot x-axis
 dat.birds.plot = dat.birds |>
@@ -249,12 +238,17 @@ ggplot()+
             aes(x = distance,
                 y = delta.f,
                 color = distance)) +
-  geom_line(linewidth = 10) +
+  geom_line(data = dat.birds.plot,
+            aes(x = distance, 
+                y = delta.f, 
+                group = ID),
+            linewidth = 0.3, color = "gray") +
+# use ID to match each dot
   geom_errorbar(data = error.bars,
                 aes(x = distance,
                 ymin = lower, ymax = upper), width = 0.2) + 
   theme_bw() + 
-  # rename
+# rename
   scale_x_discrete(labels = c("closer_vals" = "Closer", 
                                "further_vals" = "Further")) +
   labs(x = "Proximity to the median of the adult renditions of the syllable",
@@ -320,7 +314,39 @@ to highlight the rejection region and the $p$-value. Additionally, add the
 resampling distribution for $T$ to the chart to demonstrate any differences 
 between the null distribution and the distribution suggested by the data.
 
+**Solution**
+
 * Close responses is larger than 0.
+
+```{r}
+mu0 <- 0
+x.bar <- mean(dat.birds$closer_vals)
+s <- sd(dat.birds$closer_vals)
+n = nrow(dat.birds)
+t.stat <- (x.bar - mu0)/(s/sqrt(n))
+
+# critical values
+alpha <- 0.05
+t.critical.right <- qt(1-alpha, df=n-1)
+t.critical.left <- qt(alpha, df=n-1)
+t.critical.lower <- qt(alpha/2, df=n-1)
+t.critical.upper <- qt(1-alpha/2, df=n-1)
+
+# pdf.h0
+ggdat <- tibble(t = seq(-12, 12, length.out=1000)) |>
+    mutate(pdf.h0 = dt(t, df=n-1))
+
+# create vectors of x-axis ticks
+t.breaks <- seq(-12, 12, 2)
+xbar.breaks <- round(t.breaks * (s/sqrt(n)) + mu0, 2)
+
+# resampling for h0 distribution
+ts <- rep (NA, 1000)
+for (i in 1:1000){
+  curr.sample <- sample(dat.birds$closer_vals, size=n, replace = T)
+  ts[i] <- (mean(curr.sample) - mu0)/ (s/sqrt (n))
+}
+```
 
 ```{r}
 #| label: fig-ttest1
@@ -333,26 +359,74 @@ between the null distribution and the distribution suggested by the data.
 #| size: scriptsize
 
 ggplot(ggdat) +
-    geom_line(aes(x=t, y=pdf.h0))+ 
-    geom_hline(yintercept=0)+
-    geom_ribbon(data=ggdat |> 
-        filter(t >= -t.critical & t <= t.critical),
-        aes(x=t, ymin=0, ymax=pdf.h0, 
-        fill="1-alpha"), alpha=0.3) +
-    geom_ribbon(data=ggdat |> filter(t >= t.critical),
-                aes(x=t, ymin=0, ymax= pdf.h0, fill="rejection"), alpha=0.3) +
-    geom_ribbon(data=ggdat |> filter(t <= -t.critical),
-                aes(x=t, ymin=0, ymax= pdf.h0, fill="rejection"), alpha=0.3) +
-    geom_point(data=tibble(x=t.stat, y=0),
+  geom_line(aes(x=t, y=pdf.h0, color="Null Distribution")) + 
+  stat_density(data=tibble(t=ts), aes(x=t, color="Resampling Distribution"), geom="line")+
+  geom_hline(yintercept=0)+
+  geom_ribbon(data=ggdat |> filter(t >= t.critical.right),
+                aes(x=t, ymin=0, ymax= pdf.h0, fill="rejection range"), alpha=0.3) +
+  geom_point(data=tibble(x=t.stat, y=0),
                 aes(x=x, y=y), color="red", size=3)+
-    scale_x_continuous("t", breaks=t.breaks,
+  scale_x_continuous("t", breaks=t.breaks,
                         sec.axis = sec_axis(~., bquote (bar(x)),breaks=t.breaks, 
                         labels=xbar.breaks))+
-    scale_fill_manual(
-        values = c("rejection" = "red", "1-alpha" = "steelblue"),
-        labels = c("rejection" = expression(alpha/2), 
-                    "1-alpha" = expression(1 - alpha))
+  scale_fill_manual(
+    values = c("rejection range" = "red"),
+    c("Null Distribution" = "salmon", 
+       "Resampling Distribution" = "teal")
     )+
-    labs(y = "Density", fill="")
+  labs(y = "Density", fill="") +
+  theme(legend.title = element_blank())
 ```
+
+* The far responses is smaller than 0.
+
+```{r}
+mu0 <- 0
+x.bar <- mean(dat.birds$further_vals)
+s <- sd(dat.birds$further_vals)
+n = nrow(dat.birds)
+t.stat <- (x.bar - mu0)/(s/sqrt(n))
+
+# resampling for h0 distribution
+ts <- rep (NA, 1000)
+for (i in 1:1000){
+  curr.sample <- sample(dat.birds$further_vals, size=n, replace = T)
+  ts[i] <- (mean(curr.sample) - mu0)/ (s/sqrt (n))
+}
+# resampling for h0 distribution
+ts <- rep (NA, 1000)
+for (i in 1:1000){
+  curr.sample <- sample(dat.birds$further_vals, size=n, replace = T)
+  ts[i] <- (mean(curr.sample) - mu0)/ (s/sqrt (n))
+}
+```
+
+```{r}
+#| label: fig-ttest2
+#| echo: false
+#| fig-cap: "Distribution of t-statistic under $H_0$ and $H_a$"
+#| fig-width: 8
+#| fig-height: 5
+#| scale: "80%"
+#| fig-align: "center"
+#| size: scriptsize
+
+ggplot(ggdat) +
+  geom_line(aes(x=t, y=pdf.h0, color="Null Distribution")) + 
+  stat_density(data=tibble(t=ts), aes(x=t, color="Resampling Distribution"), geom="line")+
+  geom_hline(yintercept=0)+
+  geom_ribbon(data=ggdat |> filter(t <= t.critical.left),
+                aes(x=t, ymin=0, ymax= pdf.h0, fill="rejection range"), alpha=0.3) +
+  geom_point(data=tibble(x=t.stat, y=0),
+                aes(x=x, y=y), color="red", size=3)+
+  scale_x_continuous("t", breaks=t.breaks,
+                        sec.axis = sec_axis(~., bquote (bar(x)),breaks=t.breaks, 
+                        labels=xbar.breaks))+
+  scale_fill_manual(
+    values = c("rejection range" = "red")
+  )+
+  theme(legend.title = element_blank())
+  labs(y = "Density", fill="")
+```
+
 

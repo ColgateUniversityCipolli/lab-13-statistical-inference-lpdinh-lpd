@@ -451,11 +451,7 @@ ggplot(ggdat) +
   scale_x_continuous("t", breaks=t.breaks,
                         sec.axis = sec_axis(~., bquote (bar(x)),breaks=t.breaks, 
                         labels=xbar.breaks))+
-  scale_fill_manual(
-    values = c("rejection range" = "red")
-    )+
-  labs(y = "Density", fill="") +
-  theme(legend.title = element_blank())
+  labs(y = "Density", color="", fill="")
 ```
 
 * The far responses is smaller than 0.
@@ -502,12 +498,7 @@ ggplot(ggdat) +
   scale_x_continuous("t", breaks=t.breaks,
                         sec.axis = sec_axis(~., bquote (bar(x)),breaks=t.breaks, 
                         labels=xbar.breaks))+
-  scale_fill_manual(
-    values = c("rejection range" = "red")
-  )+
-# remove the "color" label
-  theme(legend.title = element_blank()) +
-  labs(y = "Density", fill="")
+  labs(y = "Density", color="", fill="")
 ```
 
 * Paired difference is significant.
@@ -555,10 +546,5 @@ ggplot(ggdat) +
   scale_x_continuous("t", breaks=t.breaks,
                         sec.axis = sec_axis(~., bquote (bar(x)),breaks=t.breaks, 
                         labels=xbar.breaks))+
-  scale_fill_manual(
-    values = c("rejection range" = "red")
-  )+
-# remove the "color" label
-  theme(legend.title = element_blank()) +
-  labs(y = "Density", fill="")
+  labs(y = "Density", color="", fill="")
 ```
